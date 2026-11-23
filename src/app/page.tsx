@@ -18,7 +18,7 @@ export default function HomePage() {
     <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:py-24">
       <div className="max-w-3xl">
         <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600">
-          Phase 0 — project foundation
+          POC in progress
         </span>
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
           Order management and logistics, end to end.

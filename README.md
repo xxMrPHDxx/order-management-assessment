@@ -115,6 +115,39 @@ Open <http://localhost:3000>.
 - The Prisma Client is a singleton in development (`src/lib/db/prisma.ts`) to survive hot reloads.
 - Environment variables are validated at startup (`src/lib/env.ts`).
 
+### Authentication & access control
+
+Authentication is intentionally mocked, but authorization is enforced on the server.
+
+- `/login` selects a **Customer** (from the seeded customer table) or the **Supplier**
+  (Sam Patel). The selected role and customer identity are stored in a signed session.
+- Sessions are HS256 JWTs in an `httpOnly`, `SameSite=Lax` cookie (`of_session`), valid for 8
+  hours and marked `Secure` in production. `SESSION_SECRET` signs them; a missing, forged, or
+  expired token is treated as no session.
+- Enforcement happens in three places:
+  1. `src/proxy.ts` redirects unauthenticated or wrong-role page requests with a real `307`
+     before rendering.
+  2. `requirePageRole()` guards the customer and supplier layouts/pages.
+  3. Route handlers use `requireRole()` / `requireSession()` and order routes will additionally
+     use `assertCustomerOwnsOrder()` for per-record ownership.
+- Missing session returns `401`; a valid session with the wrong role (or another customer's
+  order) returns `403`. Customers may only access their own orders; suppliers may access any.
+- Sign out clears the cookie through a server action and `POST /api/auth/logout`.
+
+Auth API endpoints:
+
+| Method | Path                | Purpose                                  |
+| ------ | ------------------- | ---------------------------------------- |
+| POST   | `/api/auth/login`   | `{ role, customerId? }` → session cookie |
+| GET    | `/api/auth/session` | Current session, or `401`                |
+| POST   | `/api/auth/logout`  | Clear the session cookie                 |
+
+Seeded login accounts:
+
+- Acme Logistics Ltd (`11111111-1111-4111-8111-111111111111`)
+- Northwind Traders (`22222222-2222-4222-8222-222222222222`)
+- Supplier: Sam Patel (no customer id)
+
 ### Database & indexing
 
 - Migrations live in `prisma/migrations` and are committed. Apply them with `npm run db:migrate`

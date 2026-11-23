@@ -200,16 +200,16 @@ Notes:
 
 **Done when:** dashboard pagination shows ≥3 pages; each filter returns non-empty results; every order's timeline matches its status.
 
-### Phase 3 — Auth mock + RBAC (0.5 day)
+### Phase 3 — Auth mock + RBAC (0.5 day) ✅ COMPLETE
 
 **Goal:** role is server-enforced; UI reflects it.
 
-- [ ] `/login` with Customer/Supplier toggle, mock customer selector
-- [ ] Sign JWT with `role` + `customerId`, `httpOnly`, `sameSite=lax`, expiry
-- [ ] `getSession()` / `requireRole()` / `requireCustomerOwnership()` helpers
-- [ ] Reject missing/invalid cookie with `401`; wrong role with `403`
-- [ ] Route-level protection for page groups + redirect to `/login`
-- [ ] Tests: customer calling supplier transition API → `403`; supplier creating order → `403`; customer reading another customer's order → `403`/`404` (decide and document)
+- [x] `/login` with Customer/Supplier toggle, mock customer selector
+- [x] Sign JWT with `role` + `customerId`, `httpOnly`, `sameSite=lax`, expiry
+- [x] `getSession()` / `requireRole()` / `assertCustomerOwnsOrder()` helpers
+- [x] Reject missing/invalid cookie with `401`; wrong role with `403`
+- [x] Route-level protection: `proxy.ts` 307 redirects + layout/page guards
+- [x] Tests: helper-level RBAC (14+ tests) and curl proof; endpoint-level `403` checks land with those APIs in Phases 4–5. Ownership violations return `403` (documented).
 
 **Done when:** curl with each role proves server-side enforcement (not just hidden buttons).
 

@@ -1,13 +1,13 @@
 import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
+import { logoutAction } from "@/lib/auth/actions";
+import { getSession } from "@/lib/auth/cookies";
 
-const navigation = [
-  { href: "/", label: "Overview" },
-  { href: "/login", label: "Sign in" },
-];
+export async function SiteHeader() {
+  const session = await getSession();
+  const dashboardHref = session?.role === "customer" ? "/customer/orders" : "/supplier/orders";
 
-export function SiteHeader() {
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -26,16 +26,51 @@ export function SiteHeader() {
 
         <nav aria-label="Main navigation">
           <ul className="flex items-center gap-1">
-            {navigation.map((item) => (
-              <li key={item.href}>
+            <li>
+              <Link
+                href="/"
+                className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              >
+                Overview
+              </Link>
+            </li>
+
+            {session ? (
+              <>
+                <li>
+                  <Link
+                    href={dashboardHref}
+                    className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                  >
+                    {session.role === "customer" ? "My orders" : "Dashboard"}
+                  </Link>
+                </li>
+                <li className="hidden sm:block">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 capitalize">
+                    {session.role} · {session.name}
+                  </span>
+                </li>
+                <li>
+                  <form action={logoutAction}>
+                    <button
+                      type="submit"
+                      className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                    >
+                      Sign out
+                    </button>
+                  </form>
+                </li>
+              </>
+            ) : (
+              <li>
                 <Link
-                  href={item.href}
+                  href="/login"
                   className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
                 >
-                  {item.label}
+                  Sign in
                 </Link>
               </li>
-            ))}
+            )}
           </ul>
         </nav>
       </div>
