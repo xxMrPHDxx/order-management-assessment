@@ -138,13 +138,39 @@ Open <http://localhost:3000>.
 
 Order API endpoints:
 
-| Method | Path                                | Role                      | Purpose                  |
-| ------ | ----------------------------------- | ------------------------- | ------------------------ |
-| GET    | `/api/products`                     | customer                  | Active mock catalog      |
-| POST   | `/api/orders`                       | customer                  | Create an order          |
-| GET    | `/api/orders`                       | customer                  | Own orders               |
-| GET    | `/api/orders/[orderNumber]`         | customer (own) / supplier | Order detail and history |
-| GET    | `/api/orders/[orderNumber]/invoice` | customer (own) / supplier | PDF invoice              |
+| Method | Path                                    | Role                      | Purpose                   |
+| ------ | --------------------------------------- | ------------------------- | ------------------------- |
+| GET    | `/api/products`                         | customer                  | Active mock catalog       |
+| POST   | `/api/orders`                           | customer                  | Create an order           |
+| GET    | `/api/orders`                           | customer                  | Own orders                |
+| GET    | `/api/orders/[orderNumber]`             | customer (own) / supplier | Order detail and history  |
+| GET    | `/api/orders/[orderNumber]/invoice`     | customer (own) / supplier | PDF invoice               |
+| GET    | `/api/supplier/orders`                  | supplier                  | Filtered, paginated list  |
+| POST   | `/api/orders/[orderNumber]/transitions` | supplier                  | Apply a status transition |
+
+### Supplier dashboard
+
+`/supplier/orders` is server-rendered from the same query used by
+`GET /api/supplier/orders`. Filter state lives entirely in the URL, so links are shareable and
+survive refreshes.
+
+- Query parameters: `q`, `status`, `from`, `to`, `page`.
+- `q` is a partial, case-insensitive match against the order number **or** the customer name.
+- `status` accepts `PENDING`, `ACCEPTED`, `DISPATCHED`, `IN_TRANSIT`, `DELIVERED`, `REJECTED`.
+  `PENDING` is a dashboard label that maps to the stored `PENDING_SUPPLIER_APPROVAL` at the query
+  boundary.
+- `from` and `to` are `YYYY-MM-DD` dates, inclusive, interpreted as UTC day boundaries
+  (`00:00:00.000Z` … `23:59:59.999Z`).
+- All filters combine. Invalid or unknown values fall back to their defaults (no status, page 1,
+  no date) instead of erroring, so manually edited URLs stay usable.
+- Pagination is server-side: fixed page size of 10, `count` plus `skip`/`take` inside one
+  transaction. The response reports `totalItems`, `totalPages`, and the clamped `page`.
+- Actions are derived from the state machine: Accept/Reject on pending orders, then
+  Dispatch → In Transit → Delivered one step at a time. Terminal orders expose no actions.
+- Transitions are validated against the state machine and applied with a conditional update
+  (`WHERE status = expected`) plus an audit insert in one transaction. Illegal or stale
+  transitions return `409 ILLEGAL_TRANSITION`; the audit trail remains append-only.
+- The UI refreshes the server component after a successful action and surfaces API errors inline.
 
 ### Authentication & access control
 

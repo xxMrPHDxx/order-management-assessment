@@ -1,13 +1,17 @@
 import "server-only";
 
-import { ActorRole } from "@/generated/prisma/enums";
-import type { Session } from "@/lib/auth/session";
+import { ActorRole, type OrderStatus } from "@/generated/prisma/enums";
 import { assertCustomerOwnsOrder } from "@/lib/auth/authorization";
+import type { Session } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 
 import { OrderError } from "./errors";
+import type { SupplierFilters } from "./filters";
 import { fromCents, priceOrderLines } from "./pricing";
+import { buildSupplierOrderWhere, paginationFor } from "./query";
 import type { CreateOrderInput } from "./schema";
+import { canTransition } from "./state-machine";
+import { ORDER_STATUS_LABELS } from "./status";
 
 type CustomerSession = Extract<Session, { role: "customer" }>;
 
@@ -123,6 +127,114 @@ export async function createOrderForCustomer(session: CustomerSession, input: Cr
     },
     { timeout: 15_000 },
   );
+}
+
+export type SupplierOrderRow = Awaited<ReturnType<typeof listSupplierOrders>>["orders"][number];
+
+export async function listSupplierOrders(filters: SupplierFilters) {
+  const where = buildSupplierOrderWhere(filters);
+
+  return prisma.$transaction(
+    async (tx) => {
+      const totalItems = await tx.order.count({ where });
+      const paging = paginationFor(totalItems, filters.page);
+
+      const orders = await tx.order.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: paging.skip,
+        take: paging.take,
+        include: {
+          customer: { select: { name: true } },
+          _count: { select: { items: true } },
+        },
+      });
+
+      return {
+        orders,
+        page: paging.page,
+        pageSize: paging.take,
+        totalItems: paging.totalItems,
+        totalPages: paging.totalPages,
+      };
+    },
+    { timeout: 15_000 },
+  );
+}
+
+export type SupplierSession = Extract<Session, { role: "supplier" }>;
+
+export async function transitionOrderForSupplier({
+  orderNumber,
+  toStatus,
+  session,
+}: {
+  orderNumber: string;
+  toStatus: OrderStatus;
+  session: SupplierSession;
+}) {
+  return prisma.$transaction(
+    async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { orderNumber },
+        select: { id: true, status: true, orderNumber: true },
+      });
+
+      if (!order) {
+        throw new OrderError(404, "ORDER_NOT_FOUND", "Order not found.");
+      }
+
+      if (!canTransition(order.status, toStatus)) {
+        throw new OrderError(
+          409,
+          "ILLEGAL_TRANSITION",
+          `Cannot move an order from ${ORDER_STATUS_LABELS[order.status]} to ${ORDER_STATUS_LABELS[toStatus]}.`,
+        );
+      }
+
+      const updated = await tx.order.updateMany({
+        where: { id: order.id, status: order.status },
+        data: { status: toStatus },
+      });
+
+      if (updated.count === 0) {
+        throw new OrderError(
+          409,
+          "ILLEGAL_TRANSITION",
+          "The order changed while you were acting. Refresh and try again.",
+        );
+      }
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus,
+          actorRole: ActorRole.SUPPLIER,
+          actorName: session.name,
+        },
+      });
+
+      return {
+        orderNumber: order.orderNumber,
+        fromStatus: order.status,
+        toStatus,
+      };
+    },
+    { timeout: 15_000 },
+  );
+}
+
+export function serializeSupplierOrder(order: SupplierOrderRow) {
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    customerName: order.customer.name,
+    status: order.status,
+    itemCount: order._count.items,
+    grandTotal: order.grandTotal.toFixed(2),
+    createdAt: order.createdAt.toISOString(),
+  };
 }
 
 export type OrderWithDetail = Awaited<ReturnType<typeof getOrderForViewer>>;

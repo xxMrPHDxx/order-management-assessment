@@ -230,22 +230,22 @@ Notes:
 
 **Done when:** place order → accepted order yields a correct PDF; pre-acceptance request returns an error. (Acceptance came from seeded data; the supplier action arrives in Phase 5.)
 
-### Phase 5 — Supplier dashboard (1.5 days)
+### Phase 5 — Supplier dashboard (1.5 days) ✅ COMPLETE
 
 **Goal:** spec-complete search/filter/pagination, all URL-driven.
 
-- [ ] `GET /api/supplier/orders` with Zod-validated `q`, `status`, `from`, `to`, `page`
-- [ ] Partial case-insensitive search on order number + customer name (`contains`, `mode: insensitive`)
-- [ ] Status filter incl. `PENDING` → `PENDING_SUPPLIER_APPROVAL` mapping
-- [ ] Inclusive date range (start 00:00:00, end 23:59:59.999 UTC; document timezone)
-- [ ] Combined filters + server pagination: `count` + `take/skip` in one transaction, `pageSize=10`
-- [ ] URL as state: `?q=&status=&from=&to=&page=`; refresh/share restores view; invalid params fall back safely
-- [ ] Table UI: order number, customer, date, total, status badge, actions
-- [ ] Total count + page controls (prev/next, numbered or compact); reset page to 1 when filters change
-- [ ] Row actions per role/status: Accept/Reject on PENDING; Dispatch/In Transit/Delivered stepwise
-- [ ] Optimistic-ish feedback via revalidation; disable buttons during request; surface API errors
-- [ ] Empty state, loading state, error state
-- [ ] Tests: filter combination query builder, PENDING mapping, page math, date boundary cases
+- [x] `GET /api/supplier/orders` with Zod-validated `q`, `status`, `from`, `to`, `page`
+- [x] Partial case-insensitive search on order number + customer name (`contains`, `mode: insensitive`)
+- [x] Status filter incl. `PENDING` → `PENDING_SUPPLIER_APPROVAL` mapping
+- [x] Inclusive date range (start 00:00:00, end 23:59:59.999 UTC; documented)
+- [x] Combined filters + server pagination: `count` + `take/skip` in one transaction, `pageSize=10`
+- [x] URL as state: `?q=&status=&from=&to=&page=`; refresh/share restores view; invalid params fall back safely
+- [x] Table UI: order number, customer, date, total, status badge, actions
+- [x] Total count + page controls; filter form omits `page` so applying resets to 1
+- [x] Row actions per role/status: Accept/Reject on PENDING; Dispatch/In Transit/Delivered stepwise
+- [x] Feedback via `router.refresh()`; buttons disabled during request; API errors inline
+- [x] Empty state, loading skeleton, error boundary (global `error.tsx`)
+- [x] Tests: state-machine matrix, query builder, PENDING mapping, page math, date boundaries, URL helper
 
 **Done when:** every filter combo is shareable, pagination math is correct with 30+ rows, illegal actions are impossible or rejected cleanly.
 
