@@ -278,16 +278,16 @@ Notes:
 
 **Done when:** reviewer can follow README verbatim without asking questions.
 
-### Phase 8 — Documentation & defence prep (1 day, overlaps 7)
+### Phase 8 — Documentation & defence prep ✅ COMPLETE (except external submission steps)
 
-- [ ] README sections: setup/run, seed, architecture, ER Mermaid, API summary, decisions/trade-offs, known gaps, next steps, assumptions
-- [ ] Document: PENDING mapping, server pagination choice, order number scheme, money/rounding, UTC dates, trigram search, invoice eligibility, concurrency handling
-- [ ] `AI_USAGE.md`: tools, tasks, 2–3 winning prompts, one wrong-output story with detection/fix
-- [ ] Optional 3–5 min recording script (storyboard: login → order → accept → dispatch → track → invoice → filters)
-- [ ] Commit history clean-up: logical commits, no WIP noise (do not rewrite others' work; repo is ours)
-- [ ] Prepare defence notes: why Prisma, why cookie JWT, why server pagination, where race conditions live, what I'd change at scale
-- [ ] Dry-run demo twice, timed; have seeded data reset command ready
-- [ ] Repository access confirmed for reviewers before deadline
+- [x] README sections: setup/run, seed, architecture, ER Mermaid, API summary, decisions/trade-offs, known gaps, next steps, assumptions
+- [x] Document: PENDING mapping, server pagination choice, order number scheme, money/rounding, UTC dates, trigram search, invoice eligibility, concurrency handling
+- [x] `AI_USAGE.md`: tools, tasks, 3 winning prompts, one wrong-output story with detection/fix
+- [x] Demo storyboard and recording script in `DEMO.md` (3–5 minute walkthrough)
+- [x] Commit history clean-up: logical commits, no WIP noise
+- [x] Defence notes: stack choices, pagination, races, 403 vs 404, audit immutability, scale risks
+- [ ] Dry-run the browser demo twice, timed (manual rehearsal by the candidate before the panel)
+- [ ] Confirm repository access for reviewers before the deadline (external submission step)
 
 **Done when:** README alone lets a reviewer run and understand the app; demo runs clean in under 5 minutes.
 

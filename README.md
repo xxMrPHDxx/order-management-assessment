@@ -6,7 +6,10 @@ change audited.
 
 Built with Next.js (App Router), TypeScript, PostgreSQL, Prisma, Zod, and Tailwind CSS.
 
-Current status: **Phase 0 — project foundation**. See [PLAN.md](./PLAN.md) for the phased roadmap.
+Status: **POC complete** — customer ordering and PDF invoices, supplier dashboard with filters and
+pagination, audited logistics tracking, and server-enforced role access. See [PLAN.md](./PLAN.md)
+for the phased roadmap, [DEMO.md](./DEMO.md) for a walkthrough, and
+[AI_USAGE.md](./AI_USAGE.md) for how AI tools were used.
 
 ## Getting Started
 
@@ -92,18 +95,37 @@ Open <http://localhost:3000>.
 ```text
 .
 ├── prisma/
-│   ├── schema.prisma        # Data model and migrations
-│   ├── seed.ts              # Deterministic seed data
+│   ├── schema.prisma        # Data model
+│   ├── seed.ts              # Deterministic catalog, customers, 36 orders
 │   └── migrations/          # Versioned SQL migrations (committed)
 ├── src/
-│   ├── app/                 # Next.js App Router pages and API route handlers
-│   ├── components/          # Reusable UI and layout components
+│   ├── app/
+│   │   ├── api/             # Auth, products, orders, invoices, supplier list, transitions
+│   │   ├── customer/        # Order list, new order, detail, tracking (role-guarded)
+│   │   ├── supplier/        # Dashboard and order detail (role-guarded)
+│   │   ├── login/           # Mock sign-in
+│   │   └── layout.tsx       # App shell
+│   ├── proxy.ts             # Session + role protection before render
+│   ├── components/
+│   │   ├── auth/            # Login form
+│   │   ├── layout/          # Header and footer
+│   │   ├── orders/          # Badges, stepper, timeline, order form
+│   │   └── supplier/        # Filters, pagination, row actions
 │   ├── config/              # Static app configuration
-│   ├── lib/                 # Server-side domain, auth, validation, and DB code
+│   ├── lib/
+│   │   ├── api/             # Error envelope helpers
+│   │   ├── auth/            # Session, guards, authorization, mock login
+│   │   ├── db/              # Prisma client factory and server singleton
+│   │   └── orders/          # Schema, pricing, state machine, queries, PDF
 │   └── generated/prisma/    # Generated Prisma Client (not committed)
-├── tests/                   # Cross-cutting integration tests
+├── tests/
+│   ├── api/                 # Error envelope tests
+│   ├── auth/                # Session, RBAC, login schema
+│   └── orders/              # Pricing, status, filters, pagination, tracking
 ├── docker-compose.yml       # Local PostgreSQL 16
 ├── prisma.config.ts         # Prisma CLI configuration
+├── AI_USAGE.md              # AI tool disclosure
+├── DEMO.md                  # Demo storyboard and talking points
 └── PLAN.md                  # Phased delivery plan
 ```
 
@@ -305,6 +327,155 @@ npm run db:seed -- --force
 `--force` truncates orders, order items, and history (the append-only trigger does not fire on
 `TRUNCATE`) and restarts the order-number sequence. The seed refuses to run when
 `NODE_ENV=production`.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Browser[Browser] --> Proxy[src/proxy.ts<br/>session check + role redirect]
+  Proxy --> Pages[Server Components<br/>customer / supplier pages]
+  Browser --> API[Route handlers<br/>/api/**]
+  API --> Auth[Auth + Zod guards]
+  Pages --> Services[Domain services]
+  API --> Services
+  Services --> Prisma[Prisma Client]
+  Prisma --> PG[(PostgreSQL 16)]
+  API --> PDF[react-pdf invoice]
+```
+
+- Server Components render pages and read through the domain services; client components exist only
+  for the login form, the order form, and row action buttons.
+- Route handlers validate input with Zod, authorize the session, then call the same domain services.
+- All money is calculated server-side in integer cents before being stored as `DECIMAL(10,2)`.
+- `src/proxy.ts` rejects unauthenticated or wrong-role page navigation before rendering; page
+  guards and API guards repeat the check as defence in depth.
+
+### ER diagram
+
+```mermaid
+erDiagram
+  CUSTOMER ||--o{ ORDER : places
+  ORDER ||--|{ ORDER_ITEM : contains
+  PRODUCT ||--o{ ORDER_ITEM : "ordered as"
+  ORDER ||--o{ ORDER_STATUS_HISTORY : "audited by"
+
+  CUSTOMER {
+    uuid id PK
+    string name
+    string email UK
+    string shippingAddress
+    timestamp createdAt
+  }
+  PRODUCT {
+    uuid id PK
+    string sku UK
+    string name
+    decimal unitPrice
+    boolean active
+  }
+  ORDER {
+    uuid id PK
+    string orderNumber UK
+    uuid customerId FK
+    enum status
+    string shippingAddress
+    decimal subtotal
+    decimal grandTotal
+    timestamp createdAt
+  }
+  ORDER_ITEM {
+    uuid id PK
+    uuid orderId FK
+    uuid productId FK
+    int quantity
+    decimal unitPrice
+    decimal lineTotal
+  }
+  ORDER_STATUS_HISTORY {
+    uuid id PK
+    uuid orderId FK
+    enum fromStatus
+    enum toStatus
+    enum actorRole
+    string actorName
+    string note
+    timestamp createdAt
+  }
+```
+
+Indexes: `(status, created_at DESC)`, `(customer_id, created_at DESC)`, `(created_at DESC)`,
+`order_status_history(order_id, created_at)`, plus `pg_trgm` GIN indexes on `customers.name` and
+`orders.order_number`.
+
+## Key decisions & trade-offs
+
+| Decision            | Choice                                                                         | Trade-off                                                                     |
+| ------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Framework           | Next.js App Router serves UI and API                                           | One deployable, fewer moving parts; less separation than a standalone API     |
+| Auth                | Mock signed JWT cookie, server-enforced                                        | Fast and demonstrable; no passwords, revocation, or SSO                       |
+| "PENDING" filter    | Dashboard-only label mapped to stored `PENDING_SUPPLIER_APPROVAL`              | Keeps the DB state explicit; one mapping point to maintain                    |
+| Pagination          | Server-side, 10/page, count + rows in one transaction                          | Correct totals and clamp; two queries per request                             |
+| Order numbers       | DB sequence + `next_order_number()` (`ORD-YYYY-NNNNNN`), UUID primary key      | Human-friendly and unique; sequence numbers can gap after failed transactions |
+| Money               | `DECIMAL(10,2)` + integer-cent calculations                                    | Exact totals; no multi-currency or tax logic                                  |
+| Concurrency         | Conditional update `WHERE status = expected` + audit insert in one transaction | No row locks; racing request gets `409`                                       |
+| Audit trail         | Append-only API + DB trigger blocks UPDATE/DELETE                              | Strong history guarantee; `TRUNCATE` only in seed `--force`                   |
+| Dates               | UTC `timestamptz`; inclusive UTC day bounds; display via `APP_TIMEZONE`        | Consistent filtering; viewers see UTC by default                              |
+| Search              | Prisma `contains`/`insensitive` with trigram indexes ready                     | Simple cross-relation search; may need UNION/materialised search at scale     |
+| Invoice eligibility | `ACCEPTED`, `DISPATCHED`, `IN_TRANSIT`, `DELIVERED`                            | Matches the brief; pending/rejected return `409`                              |
+| Ownership errors    | `403` for another customer's order                                             | Clear server error; reveals record existence (acceptable for this POC)        |
+| Query validation    | Invalid filter values fall back to defaults                                    | Shareable URLs never break; API is forgiving rather than strict               |
+
+## Assumptions
+
+- One supplier, one shipment per order, and a static catalog with no stock reservation.
+- The two seeded customers are the available mock identities; the supplier is Sam Patel.
+- Currency is USD, prices include no tax, and shipping is free; `grandTotal = subtotal`.
+- "Accepted or later" means `ACCEPTED`, `DISPATCHED`, `IN_TRANSIT`, or `DELIVERED`.
+- Date filters and stored timestamps are UTC; the UI formats with `APP_TIMEZONE`.
+- Ten orders per page on the supplier dashboard; the customer list is intentionally unpaginated.
+
+## Testing & verification
+
+- `npm run verify` runs ESLint, TypeScript, and 67 Vitest tests covering auth tokens/roles,
+  order pricing, invoice eligibility, schemas, the state machine, filters, pagination, URL building,
+  tracking steps, and the error envelope.
+- `npm run build` verifies the production bundle.
+- Integration checks performed against the running production build:
+  - login as both roles, forged cookie → `401`, wrong role → `403`
+  - order creation → pending; invoice before acceptance → `409`; accepted invoice → `application/pdf`
+  - combined dashboard filters, page clamping, and shareable URLs
+  - full transition chain plus illegal transitions → `409`
+  - concurrent double accept → one `200`, one `409`, one audit row
+  - PDF text extracted and checked for order/invoice numbers, lines, totals, address, and date
+- A fresh clone was verified with `npm ci`, `prisma migrate deploy`, seed, build, and start.
+
+## Known gaps
+
+- Mock authentication only: no passwords, MFA, session revocation, rate limiting, or CSRF token
+  (`SameSite=Lax` is the current mitigation).
+- Single supplier and no multi-tenant isolation; any supplier session can see all orders.
+- No inventory, payments, tax, shipping fees, discounts, cancellations, returns, or partial
+  fulfilment.
+- Customer order list is not paginated or filterable.
+- No email notifications/webhooks; invoices are generated on demand, not stored.
+- PDF uses built-in fonts, so currency glyphs outside Latin-1 are unsupported.
+- No browser E2E suite (Playwright was optional) and no CI pipeline configured.
+- `npm audit` reports a dev-only advisory in Prisma CLI's `effect` dependency; Prisma is not in the
+  runtime bundle.
+- Search combines two tables with OR; at large scale this may need a dedicated search column or
+  UNION of two indexed queries.
+- No structured logging, metrics, or tracing.
+
+## What I would do with more time
+
+1. Add Playwright happy-path and RBAC tests in CI, plus accessibility checks.
+2. Replace mock auth with a real identity provider and per-user supplier accounts.
+3. Add cancellation, returns, and partial fulfilment with the same audited transition machinery.
+4. Introduce inventory reservation and a payment/invoice lifecycle.
+5. Paginate and filter the customer list; add saved filter presets.
+6. Store invoices (S3) and email them on acceptance, with signed download links.
+7. Add structured logging, metrics, rate limiting, and a CSP with nonces.
+8. Load-test search/pagination and move to a dedicated search strategy if needed.
 
 ---
 
