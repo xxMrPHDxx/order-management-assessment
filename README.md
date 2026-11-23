@@ -115,6 +115,37 @@ Open <http://localhost:3000>.
 - The Prisma Client is a singleton in development (`src/lib/db/prisma.ts`) to survive hot reloads.
 - Environment variables are validated at startup (`src/lib/env.ts`).
 
+### Orders & invoices
+
+- Customers create orders at `/customer/orders/new`. The catalog is rendered on the server from
+  the active product table; the browser posts to `POST /api/orders`.
+- The client only selects products and quantities. The server validates the payload with Zod,
+  re-reads prices from the database, and computes line totals, subtotal, and grand total in integer
+  cents. Unknown or inactive products are rejected; duplicate lines are rejected.
+- Order creation is one transaction: `next_order_number()` allocates the human-friendly number,
+  then the order, its items, and the initial `PENDING_SUPPLIER_APPROVAL` history entry are inserted
+  together.
+- Customers only see their own orders. Accessing another customer's order returns `403`; missing
+  orders return `404`.
+- Invoices are generated server-side with `@react-pdf/renderer` and streamed as a downloadable
+  PDF. The document contains the order number, mock invoice number (`INV-…`), issue date, customer
+  name, shipping address, line items, line totals, subtotal, and grand total.
+- Invoice eligibility is `ACCEPTED`, `DISPATCHED`, `IN_TRANSIT`, or `DELIVERED`. The UI hides the
+  button before acceptance; the API independently returns `409 INVOICE_NOT_AVAILABLE` for pending
+  or rejected orders.
+- The customer order list is not paginated: the assessment's pagination requirement applies to
+  the supplier dashboard (Phase 5).
+
+Order API endpoints:
+
+| Method | Path                                | Role                      | Purpose                  |
+| ------ | ----------------------------------- | ------------------------- | ------------------------ |
+| GET    | `/api/products`                     | customer                  | Active mock catalog      |
+| POST   | `/api/orders`                       | customer                  | Create an order          |
+| GET    | `/api/orders`                       | customer                  | Own orders               |
+| GET    | `/api/orders/[orderNumber]`         | customer (own) / supplier | Order detail and history |
+| GET    | `/api/orders/[orderNumber]/invoice` | customer (own) / supplier | PDF invoice              |
+
 ### Authentication & access control
 
 Authentication is intentionally mocked, but authorization is enforced on the server.

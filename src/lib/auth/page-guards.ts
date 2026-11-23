@@ -9,7 +9,9 @@ import type { Role, Session } from "./session";
  * Page-level guard for server components. Redirects instead of throwing so a
  * browser navigation never renders an error boundary.
  */
-export async function requirePageRole(role: Role): Promise<Session> {
+export async function requirePageRole<R extends Role>(
+  role: R,
+): Promise<Extract<Session, { role: R }>> {
   const session = await getSession();
 
   if (!session) {
@@ -19,5 +21,5 @@ export async function requirePageRole(role: Role): Promise<Session> {
     redirect(role === "customer" ? "/supplier/orders" : "/customer/orders");
   }
 
-  return session;
+  return session as Extract<Session, { role: R }>;
 }

@@ -21,12 +21,15 @@ export function assertAuthenticated(session: Session | null): Session {
   return session;
 }
 
-export function assertRole(session: Session | null, role: Role): Session {
+export function assertRole<R extends Role>(
+  session: Session | null,
+  role: R,
+): Extract<Session, { role: R }> {
   const authenticated = assertAuthenticated(session);
   if (authenticated.role !== role) {
     throw new AuthError(403, "FORBIDDEN", `This action requires the ${role} role.`);
   }
-  return authenticated;
+  return authenticated as Extract<Session, { role: R }>;
 }
 
 export function assertCustomerOwnsOrder(session: Session, orderCustomerId: string): void {

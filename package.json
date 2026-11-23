@@ -23,6 +23,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "@react-pdf/renderer": "^4.9.0",
     "jose": "^6.2.18",
     "next": "^16.4.6",
     "pg": "^8.23.1",

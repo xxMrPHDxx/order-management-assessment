@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  // The PDF renderer must stay in the Node.js runtime bundle rather than be bundled for edge.
+  serverExternalPackages: ["@react-pdf/renderer"],
 };
 
 export default nextConfig;

@@ -213,22 +213,22 @@ Notes:
 
 **Done when:** curl with each role proves server-side enforcement (not just hidden buttons).
 
-### Phase 4 — Customer: catalog, order creation, invoice (1.5 days)
+### Phase 4 — Customer: catalog, order creation, invoice (1.5 days) ✅ COMPLETE
 
 **Goal:** end-to-end order placement with validated totals and server-side PDF.
 
-- [ ] Catalog page from `GET /api/products`
-- [ ] Order form: quantities per product, shipping address, customer details prefilled; client-side hints only
-- [ ] `createOrderSchema`: ≥1 item, qty ≥ 1, known product IDs, address non-empty, no duplicate lines
-- [ ] Server re-prices from DB (never trust client prices), computes `lineTotal`, `subtotal`, `grandTotal`
-- [ ] Create order + items + initial history (`SYSTEM`/customer) in one transaction
-- [ ] Order confirmation page + customer order list with status badges
-- [ ] Invoice route: RBAC + ownership + status gate → `@react-pdf/renderer` stream with `Content-Disposition: attachment`
-- [ ] PDF content check: order ID, invoice number, lines, totals, customer name, address, issue date, currency formatting, page-safe layout
-- [ ] Hide/disable Download Invoice unless status ∈ ACCEPTED…DELIVERED; still enforce server-side (403/409)
-- [ ] Tests: total computation, invoice eligibility matrix, PDF returns `application/pdf`
+- [x] Catalog page from `GET /api/products`
+- [x] Order form: quantities per product, shipping address, customer details prefilled; client-side hints only
+- [x] `createOrderSchema`: ≥1 item, qty ≥ 1, known product IDs, address non-empty, no duplicate lines
+- [x] Server re-prices from DB (never trust client prices), computes `lineTotal`, `subtotal`, `grandTotal`
+- [x] Create order + items + initial history (`CUSTOMER`) in one transaction
+- [x] Order confirmation page + customer order list with status badges
+- [x] Invoice route: RBAC + ownership + status gate → `@react-pdf/renderer` buffer with `Content-Disposition: attachment`
+- [x] PDF content check: order ID, invoice number, lines, totals, customer name, address, issue date, currency formatting, page-safe layout
+- [x] Hide/disable Download Invoice unless status ∈ ACCEPTED…DELIVERED; server returns `409` otherwise
+- [x] Tests: total computation, invoice eligibility matrix; PDF content type validated by integration check (`application/pdf`, `%PDF-`)
 
-**Done when:** place order → supplier accepts → customer downloads a correct PDF; pre-acceptance request returns an error.
+**Done when:** place order → accepted order yields a correct PDF; pre-acceptance request returns an error. (Acceptance came from seeded data; the supplier action arrives in Phase 5.)
 
 ### Phase 5 — Supplier dashboard (1.5 days)
 
