@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { handleApiError, jsonError } from "@/lib/api/errors";
+import { handleApiError, invalidJsonResponse, validationErrorResponse } from "@/lib/api/errors";
 import { requireRole } from "@/lib/auth/guards";
 import { createOrderSchema } from "@/lib/orders/schema";
 import {
@@ -30,20 +30,12 @@ export async function POST(request: Request) {
     try {
       payload = await request.json();
     } catch {
-      return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
+      return invalidJsonResponse();
     }
 
     const parsed = createOrderSchema.safeParse(payload);
     if (!parsed.success) {
-      return jsonError(
-        400,
-        "VALIDATION_ERROR",
-        "Invalid order payload.",
-        parsed.error.issues.map((issue) => ({
-          path: issue.path.join("."),
-          message: issue.message,
-        })),
-      );
+      return validationErrorResponse("Invalid order payload.", parsed.error);
     }
 
     const order = await createOrderForCustomer(session, parsed.data);

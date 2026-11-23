@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { invalidJsonResponse, validationErrorResponse } from "@/lib/api/errors";
 import { establishSession } from "@/lib/auth/cookies";
 import { loginSchema } from "@/lib/auth/login";
 import { createMockSession } from "@/lib/auth/service";
@@ -9,27 +10,12 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: { code: "INVALID_JSON", message: "Request body must be valid JSON." } },
-      { status: 400 },
-    );
+    return invalidJsonResponse();
   }
 
   const parsed = loginSchema.safeParse(payload);
   if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: {
-          code: "VALIDATION_ERROR",
-          message: "Invalid login payload.",
-          details: parsed.error.issues.map((issue) => ({
-            path: issue.path.join("."),
-            message: issue.message,
-          })),
-        },
-      },
-      { status: 400 },
-    );
+    return validationErrorResponse("Invalid login payload.", parsed.error);
   }
 
   const result = await createMockSession(parsed.data);

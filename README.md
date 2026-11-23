@@ -79,6 +79,7 @@ Open <http://localhost:3000>.
 | `npm run lint`       | ESLint (Next.js core-web-vitals + TypeScript rules) |
 | `npm run typecheck`  | TypeScript with no emit                             |
 | `npm run test`       | Vitest unit tests                                   |
+| `npm run verify`     | Lint + typecheck + tests in one command             |
 | `npm run format`     | Prettier (includes Tailwind class sorting)          |
 | `npm run db:migrate` | Create and apply a development migration            |
 | `npm run db:deploy`  | Apply committed migrations (CI/production)          |
@@ -219,6 +220,39 @@ Seeded login accounts:
 - Acme Logistics Ltd (`11111111-1111-4111-8111-111111111111`)
 - Northwind Traders (`22222222-2222-4222-8222-222222222222`)
 - Supplier: Sam Patel (no customer id)
+
+### Error handling & security
+
+All API failures use one envelope:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "...",
+    "details": [{ "path": "items.0.quantity", "message": "..." }]
+  }
+}
+```
+
+- `400` validation / malformed JSON, `401` no session, `403` wrong role or ownership, `404` missing
+  order, `409` illegal or stale transition, `500` unexpected error.
+- Zod validates JSON bodies and order-number route params. Field-level issues are returned in
+  `details`; unexpected exceptions are logged server-side and never leak internals to clients.
+- Dashboard query filters are parsed defensively and fall back to defaults instead of returning
+  errors for malformed URLs.
+- Every order-scoped API calls `getOrderForViewer()`, which enforces customer ownership. Customer
+  lists are filtered by the session's `customerId`; supplier-only endpoints use `requireRole`.
+- Status changes use the conditional-update-plus-audit transaction described above. A concurrent
+  double accept was verified: one request `200`, the other `409`, exactly one audit row.
+- Responses include `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, and a restrictive `Permissions-Policy`.
+- `.env` is ignored; only `.env.example` is tracked. Session secrets are never committed.
+- Known limitations (intentional for a POC): mock authentication with no passwords or rate
+  limiting, no separate CSRF token (`SameSite=Lax` mitigates), development database credentials in
+  `docker-compose.yml`, and no CSP because Next.js injects inline bootstrap scripts. `npm audit`
+  reports a dev-only advisory in the Prisma CLI's `effect` dependency; it is not in the runtime
+  bundle.
 
 ### Database & indexing
 

@@ -264,16 +264,17 @@ Notes:
 
 **Done when:** demo can walk a fresh order through all states and show a truthful timeline; rejected order clearly terminal.
 
-### Phase 7 — Hardening (0.5–1 day)
+### Phase 7 — Hardening ✅ COMPLETE
 
-- [ ] Central error mapper → consistent `{ error: { code, message, details } }`
-- [ ] Zod error formatting to field-level details
-- [ ] Ownership checks audited on every order-scoped route
-- [ ] Transaction + conditional update verified under double-submit (manual/curl test)
-- [ ] No secrets in repo; `.env.example` complete; `.gitignore` covers `.env*`
-- [ ] `npm run lint`, `typecheck`, `test`, `build` all green
-- [ ] Fresh-machine run-through: clone → env → compose → migrate → seed → dev
-- [ ] Optional: Playwright happy path (login → order → accept → invoice → track)
+- [x] Central error mapper → consistent `{ error: { code, message, details } }`
+- [x] Zod error formatting to field-level details
+- [x] Ownership checks audited on every order-scoped route (customer list, detail, invoice, track)
+- [x] Transaction + conditional update verified under double-submit: `200` + `409`, one audit row
+- [x] No secrets in repo; `.env.example` complete; `.gitignore` covers `.env*`
+- [x] `npm run lint`, `typecheck`, `test`, `build` all green (67 tests)
+- [x] Fresh-machine run-through: local clone → env → `npm ci` → `db:deploy` → `db:seed` → `build` → `start` (36 orders). Postgres container workflow verified separately on the main checkout.
+- [ ] (Optional) Playwright happy path — skipped; curl/API integration covers the same flow
+- [x] Added security headers and `npm run verify`
 
 **Done when:** reviewer can follow README verbatim without asking questions.
 

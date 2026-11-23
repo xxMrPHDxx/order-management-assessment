@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { ORDER_STATUSES } from "@/lib/orders/status";
-import { handleApiError, jsonError } from "@/lib/api/errors";
+import { handleApiError, invalidJsonResponse, validationErrorResponse } from "@/lib/api/errors";
 import { requireRole } from "@/lib/auth/guards";
 import { orderNumberSchema } from "@/lib/orders/schema";
 import { transitionOrderForSupplier } from "@/lib/orders/service";
@@ -21,27 +21,19 @@ export async function POST(
 
     const parsedOrderNumber = orderNumberSchema.safeParse(orderNumber);
     if (!parsedOrderNumber.success) {
-      return jsonError(400, "INVALID_ORDER_NUMBER", "Invalid order number.");
+      return validationErrorResponse("Invalid order number.", parsedOrderNumber.error);
     }
 
     let payload: unknown;
     try {
       payload = await request.json();
     } catch {
-      return jsonError(400, "INVALID_JSON", "Request body must be valid JSON.");
+      return invalidJsonResponse();
     }
 
     const parsedBody = transitionSchema.safeParse(payload);
     if (!parsedBody.success) {
-      return jsonError(
-        400,
-        "VALIDATION_ERROR",
-        "Invalid transition payload.",
-        parsedBody.error.issues.map((issue) => ({
-          path: issue.path.join("."),
-          message: issue.message,
-        })),
-      );
+      return validationErrorResponse("Invalid transition payload.", parsedBody.error);
     }
 
     const result = await transitionOrderForSupplier({

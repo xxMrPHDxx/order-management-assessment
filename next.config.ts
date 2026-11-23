@@ -9,6 +9,22 @@ const nextConfig: NextConfig = {
   },
   // The PDF renderer must stay in the Node.js runtime bundle rather than be bundled for edge.
   serverExternalPackages: ["@react-pdf/renderer"],
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
