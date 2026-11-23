@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Assessment source document (kept locally, not published)
+/docs.pdf
