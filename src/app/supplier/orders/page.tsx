@@ -94,7 +94,12 @@ export default async function SupplierOrdersPage({
               result.orders.map((order) => (
                 <tr key={order.id}>
                   <td className="px-4 py-3 font-semibold whitespace-nowrap text-slate-900">
-                    {order.orderNumber}
+                    <Link
+                      href={`/supplier/orders/${order.orderNumber}`}
+                      className="hover:underline"
+                    >
+                      {order.orderNumber}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-slate-700">{order.customer.name}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-slate-600">

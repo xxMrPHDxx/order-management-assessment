@@ -172,6 +172,21 @@ survive refreshes.
   transitions return `409 ILLEGAL_TRANSITION`; the audit trail remains append-only.
 - The UI refreshes the server component after a successful action and surfaces API errors inline.
 
+### Tracking & audit trail
+
+- Customers enter an order number at `/customer/track`. The lookup is restricted to their own
+  orders; a missing, malformed, or someone else's order shows a single generic message.
+- The five-step stepper (Placed → Accepted → Dispatched → In Transit → Delivered) is derived from
+  the stored status, so it cannot disagree with the API. Delivered orders show every step complete.
+- Rejected orders do not render a stalled stepper. They render a distinct termination card with the
+  rejection timestamp and actor, followed by the audit trail.
+- The audit trail lists every status change oldest-first, with source and destination status, the
+  formatted timestamp (for example `Nov 11, 2026, 14:00`), the actor role and name, and any note.
+  Ordering is deterministic: `created_at`, then `id`.
+- The same `OrderTracking` component appears on the customer order detail page and the supplier
+  order detail page (`/supplier/orders/[orderNumber]`), which also exposes the next allowed actions.
+- History is append-only at both the API and database levels, so the timeline cannot be rewritten.
+
 ### Authentication & access control
 
 Authentication is intentionally mocked, but authorization is enforced on the server.

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { StatusBadge } from "@/components/orders/status-badge";
+import { OrderTracking } from "@/components/orders/order-tracking";
+import { AuthError } from "@/lib/auth/authorization";
 import { requirePageRole } from "@/lib/auth/page-guards";
 import { env } from "@/lib/env";
 import { formatDateTime, formatMoney } from "@/lib/orders/format";
@@ -29,7 +31,15 @@ export default async function CustomerOrderDetailPage({
     notFound();
   }
 
-  const order = await getOrderForViewer(parsed.data, session);
+  let order: Awaited<ReturnType<typeof getOrderForViewer>>;
+  try {
+    order = await getOrderForViewer(parsed.data, session);
+  } catch (caught) {
+    if (caught instanceof AuthError) {
+      notFound();
+    }
+    throw caught;
+  }
   if (!order) {
     notFound();
   }
@@ -142,24 +152,19 @@ export default async function CustomerOrderDetailPage({
             <p className="mt-2 text-sm text-slate-900">{order.customer.name}</p>
             <p className="text-sm text-slate-600">{order.customer.email}</p>
           </section>
-
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-slate-900">Status history</h2>
-            <ol className="mt-3 space-y-3">
-              {order.history.map((entry) => (
-                <li key={entry.id} className="text-sm">
-                  <p className="font-medium text-slate-900">
-                    {entry.toStatus.replaceAll("_", " ")}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {formatDateTime(entry.createdAt, env.APP_TIMEZONE)} · {entry.actorRole}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </section>
         </aside>
       </div>
+
+      <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-semibold text-slate-900">Tracking</h2>
+        <div className="mt-5">
+          <OrderTracking
+            status={order.status}
+            history={order.history}
+            timeZone={env.APP_TIMEZONE}
+          />
+        </div>
+      </section>
     </div>
   );
 }

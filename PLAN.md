@@ -249,18 +249,18 @@ Notes:
 
 **Done when:** every filter combo is shareable, pagination math is correct with 30+ rows, illegal actions are impossible or rejected cleanly.
 
-### Phase 6 — Logistics tracking + audit trail (1 day)
+### Phase 6 — Logistics tracking + audit trail (1 day) ✅ COMPLETE
 
 **Goal:** customer tracking view with honest terminal handling.
 
-- [ ] `/track` with Order ID input (customer-scoped; supplier can view any)
-- [ ] Stepper: Placed → Accepted → Dispatched → In Transit → Delivered, driven by history/status
-- [ ] Rejected: distinct terminated state (not a stalled stepper), with rejection timestamp/role
-- [ ] Timeline: from → to, timestamp formatted `Nov 11, 2026, 14:00`, actor role/name, optional note
-- [ ] Order detail page reuses tracking component
-- [ ] Supplier order detail page shows same history + action buttons
-- [ ] History ordering deterministic (createdAt, id tiebreak)
-- [ ] Tests: stepper derivation per status, rejected variant, history serialization
+- [x] `/customer/track` with Order ID input (customer-scoped); supplier can view any order from its detail page
+- [x] Stepper: Placed → Accepted → Dispatched → In Transit → Delivered, derived from status
+- [x] Rejected: distinct terminated card (stepper replaced), with rejection timestamp and actor
+- [x] Timeline: from → to, timestamp formatted `Nov 11, 2026, 14:00`, actor role/name, optional note
+- [x] Customer order detail reuses the tracking component
+- [x] Supplier order detail page shows the same timeline plus action buttons
+- [x] History ordering deterministic (`createdAt`, `id` tiebreak)
+- [x] Tests: stepper derivation per status, delivered completion, rejected variant, timestamp formatting/timezone
 
 **Done when:** demo can walk a fresh order through all states and show a truthful timeline; rejected order clearly terminal.
 
