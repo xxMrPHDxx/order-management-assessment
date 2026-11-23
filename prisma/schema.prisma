@@ -1,0 +1,11 @@
+// Prisma schema for the B2B order management and logistics POC.
+// Models are added in Phase 1; see PLAN.md.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
