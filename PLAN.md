@@ -187,16 +187,16 @@ Notes:
 
 **Done when:** reset → migrate → seed is deterministic and idempotent-safe.
 
-### Phase 2 — Seed data for filters/pagination (0.5 day)
+### Phase 2 — Seed data for filters/pagination (0.5 day) ✅ COMPLETE
 
 **Goal:** ≥30 orders across all statuses and varied dates; audit trails consistent.
 
-- [ ] Seed script: ≥30 orders, spread over ~90 days, all 6 filter statuses, varied customers
-- [ ] Every seeded order has a coherent history chain ending in its current status
-- [ ] 1–2 rejected orders and 2–3 delivered orders for stepper/terminal demos
-- [ ] Deterministic seed (fixed random seed or hardcoded offsets) so screenshots/demos are stable
-- [ ] Guard: refuse to run in production; optional `--force` truncate
-- [ ] Log summary counts per status
+- [x] Seed script: ≥30 orders, spread over ~90 days, all 6 filter statuses, varied customers
+- [x] Every seeded order has a coherent history chain ending in its current status
+- [x] 1–2 rejected orders and 2–3 delivered orders for stepper/terminal demos
+- [x] Deterministic seed (fixed random seed or hardcoded offsets) so screenshots/demos are stable
+- [x] Guard: refuse to run in production; optional `--force` truncate
+- [x] Log summary counts per status
 
 **Done when:** dashboard pagination shows ≥3 pages; each filter returns non-empty results; every order's timeline matches its status.
 

@@ -132,19 +132,40 @@ Open <http://localhost:3000>.
 - `CHECK` constraints reject non-positive quantities and negative money values at the database
   boundary.
 
-`EXPLAIN` sanity checks: the status/date dashboard query uses
-`orders_status_created_at_idx`, and the customer join uses the primary key. With only a handful of
-rows PostgreSQL may choose a sequential scan for the free-text predicate after the join; the
-trigram indexes are in place for growth and should be re-checked once the order seed is loaded.
+`EXPLAIN` sanity checks on the seeded dataset:
+
+- The status/date dashboard query uses `orders_status_created_at_idx` (bitmap index scan for the
+  status filter; the date range uses the same composite index).
+- The customer join uses `customers_pkey`.
+- The search predicate (`order_number ILIKE ... OR customer.name ILIKE ...`) is applied as a join
+  filter at this data size. The trigram indexes are in place for growth; PostgreSQL will prefer
+  them once the table is large enough for a bitmap index path to beat a sequential scan.
 
 ### Seed data
 
-`npm run db:seed` is deterministic and idempotent (upserts by stable IDs). It currently creates:
+`npm run db:seed` is deterministic and idempotent. It seeds by stable IDs and allocates order
+numbers through `next_order_number()`, so re-running it does not duplicate orders or renumber
+them. It creates:
 
 - 2 customers (Acme Logistics Ltd, Northwind Traders)
 - 10 catalog products with SKUs `OF-1001` to `OF-1010`
+- 36 orders spread across roughly 75 days, covering all six statuses:
+  - `PENDING_SUPPLIER_APPROVAL` 8, `ACCEPTED` 5, `DISPATCHED` 5, `IN_TRANSIT` 5,
+    `DELIVERED` 9, `REJECTED` 4
+- 2–3 lines per order, with unit prices snapshotted from the catalog
+- a coherent history chain per order ending at its current status (1 row for pending, up to 5 for
+  delivered)
 
-Phase 2 extends the same script with 30+ orders, order items, and status history.
+Dates are anchored to two days before the seed run and use hard-coded day offsets, so the shape of
+the dataset is stable across runs. To rebuild the order set from scratch:
+
+```bash
+npm run db:seed -- --force
+```
+
+`--force` truncates orders, order items, and history (the append-only trigger does not fire on
+`TRUNCATE`) and restarts the order-number sequence. The seed refuses to run when
+`NODE_ENV=production`.
 
 ---
 
