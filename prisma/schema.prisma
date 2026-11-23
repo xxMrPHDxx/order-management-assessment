@@ -1,5 +1,5 @@
 // Prisma schema for the B2B order management and logistics POC.
-// Models are added in Phase 1; see PLAN.md.
+// Models are introduced in Phase 1; seed data in Phase 2.
 
 generator client {
   provider = "prisma-client"
@@ -8,4 +8,106 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum OrderStatus {
+  PENDING_SUPPLIER_APPROVAL
+  ACCEPTED
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  REJECTED
+
+  @@map("order_status")
+}
+
+enum ActorRole {
+  CUSTOMER
+  SUPPLIER
+  SYSTEM
+
+  @@map("actor_role")
+}
+
+model Customer {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String
+  email           String   @unique
+  shippingAddress String   @map("shipping_address")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  orders Order[]
+
+  @@index([name])
+  @@map("customers")
+}
+
+model Product {
+  id        String   @id @default(uuid()) @db.Uuid
+  sku       String   @unique
+  name      String
+  unitPrice Decimal  @map("unit_price") @db.Decimal(10, 2)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  orderItems OrderItem[]
+
+  @@index([name])
+  @@map("products")
+}
+
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  orderNumber     String      @unique @map("order_number")
+  customerId      String      @map("customer_id") @db.Uuid
+  status          OrderStatus @default(PENDING_SUPPLIER_APPROVAL)
+  shippingAddress String      @map("shipping_address")
+  subtotal        Decimal     @db.Decimal(10, 2)
+  grandTotal      Decimal     @map("grand_total") @db.Decimal(10, 2)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  customer Customer             @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+  history  OrderStatusHistory[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([customerId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  orderId   String  @map("order_id") @db.Uuid
+  productId String  @map("product_id") @db.Uuid
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2)
+  lineTotal Decimal @map("line_total") @db.Decimal(10, 2)
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, productId])
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id         String       @id @default(uuid()) @db.Uuid
+  orderId    String       @map("order_id") @db.Uuid
+  fromStatus OrderStatus? @map("from_status")
+  toStatus   OrderStatus  @map("to_status")
+  actorRole  ActorRole    @map("actor_role")
+  actorName  String       @map("actor_name")
+  note       String?
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@map("order_status_history")
 }

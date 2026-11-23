@@ -171,19 +171,19 @@ Notes:
 
 **Done when:** fresh clone can boot per README, migrations run clean, `npm run build` passes.
 
-### Phase 1 — Data model & migrations (0.5 day)
+### Phase 1 — Data model & migrations (0.5 day) ✅ COMPLETE
 
 **Goal:** complete schema, one migration, referential integrity.
 
-- [ ] Enums: `OrderStatus`, `ActorRole`
-- [ ] Models: `Customer`, `Product`, `Order`, `OrderItem`, `OrderStatusHistory`
-- [ ] Money as `Decimal(10,2)`; timestamps `@db.Timestamptz`
-- [ ] Order `orderNumber` unique; sequence for generation
-- [ ] Indexes from architecture section (incl. trigram extension + migration note)
-- [ ] Seed catalog: 8+ products with realistic names/prices
-- [ ] Seed 2 customers
-- [ ] `prisma migrate dev` → commit migration SQL; verify `prisma migrate reset` works
-- [ ] Sanity queries for search/filter/sort with `EXPLAIN` (note results in README)
+- [x] Enums: `OrderStatus`, `ActorRole`
+- [x] Models: `Customer`, `Product`, `Order`, `OrderItem`, `OrderStatusHistory`
+- [x] Money as `Decimal(10,2)`; timestamps `@db.Timestamptz`
+- [x] Order `orderNumber` unique; sequence + `next_order_number()` SQL function
+- [x] Indexes from architecture section (incl. trigram extension + migration note)
+- [x] Seed catalog: 8+ products with realistic names/prices
+- [x] Seed 2 customers
+- [x] `prisma migrate dev` applied; migration SQL committed; fresh-DB `migrate deploy` verified
+- [x] Sanity queries for search/filter/sort with `EXPLAIN` (notes in README)
 
 **Done when:** reset → migrate → seed is deterministic and idempotent-safe.
 

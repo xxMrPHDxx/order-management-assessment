@@ -115,6 +115,37 @@ Open <http://localhost:3000>.
 - The Prisma Client is a singleton in development (`src/lib/db/prisma.ts`) to survive hot reloads.
 - Environment variables are validated at startup (`src/lib/env.ts`).
 
+### Database & indexing
+
+- Migrations live in `prisma/migrations` and are committed. Apply them with `npm run db:migrate`
+  in development or `npm run db:deploy` in CI/production.
+- Money is stored as `DECIMAL(10,2)`; every timestamp is `timestamptz` in UTC.
+- Order numbers are generated inside the database by `next_order_number()`, producing values such
+  as `ORD-2026-000042` from a dedicated sequence. The UUID remains the internal primary key.
+- Dashboard queries use `orders(status, created_at DESC)`, the customer view uses
+  `orders(customer_id, created_at DESC)`, and the timeline uses
+  `order_status_history(order_id, created_at)`.
+- Partial, case-insensitive search is supported by `pg_trgm` GIN indexes on `customers.name` and
+  `orders.order_number`, in addition to the btree indexes.
+- `order_status_history` is append-only. A database trigger rejects `UPDATE` and `DELETE`, and the
+  application exposes no mutation routes for history.
+- `CHECK` constraints reject non-positive quantities and negative money values at the database
+  boundary.
+
+`EXPLAIN` sanity checks: the status/date dashboard query uses
+`orders_status_created_at_idx`, and the customer join uses the primary key. With only a handful of
+rows PostgreSQL may choose a sequential scan for the free-text predicate after the join; the
+trigram indexes are in place for growth and should be re-checked once the order seed is loaded.
+
+### Seed data
+
+`npm run db:seed` is deterministic and idempotent (upserts by stable IDs). It currently creates:
+
+- 2 customers (Acme Logistics Ltd, Northwind Traders)
+- 10 catalog products with SKUs `OF-1001` to `OF-1010`
+
+Phase 2 extends the same script with 30+ orders, order items, and status history.
+
 ---
 
 # Assessment POC Details
